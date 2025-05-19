@@ -1,0 +1,107 @@
+service: reto-rimac-api
+
+frameworkVersion: '3'
+
+org: null
+app: null
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: us-east-1
+  profile: personaldevelop
+  timeout: 10
+  memorySize: 128
+
+  #environment:
+    #OPENWEATHER_API_KEY: ${env:OPENWEATHER_API_KEY}
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - logs:CreateLogGroup
+        - logs:CreateLogStream
+        - logs:PutLogEvents
+      Resource: arn:aws:logs:*:*:*
+
+    - Effect: Allow
+      Action:
+        - dynamodb:PutItem
+        - dynamodb:GetItem
+        - dynamodb:Scan
+      Resource: arn:aws:dynamodb:${self:provider.region}:*:table/RandomDataTable
+    
+    - Effect: Allow
+      Action:
+        - dynamodb:PutItem
+        - dynamodb:GetItem
+        - dynamodb:Scan
+      Resource: arn:aws:dynamodb:${self:provider.region}:*:table/FusionadosHistorialTable
+
+functions:
+  GetFusionadosFunction:
+    name: GetFusionadosFunction
+    handler: dist/handler.fusionadosHandler
+    timeout: 10
+    memorySize: 256
+    events:
+      - httpApi:
+          path: /fusionados
+          method: get
+
+  AlmacenarDataFunction:
+    name: AlmacenarDataFunction
+    handler: dist/handler.almacenarHandler
+    timeout: 10
+    memorySize: 256
+    events:
+      - httpApi:
+          path: /almacenar
+          method: post
+
+  GetHistorialFunction:
+    name: GetHistorialFunction
+    handler: dist/handler.historialHandler
+    timeout: 10
+    memorySize: 256
+    events:
+      - httpApi:
+          path: /historial
+          method: get
+
+plugins:
+  - serverless-offline
+
+package:
+  include:
+    - dist/**
+
+resources:
+  Resources:
+    RandomDataTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: RandomDataTable
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+
+    FusionadosHistorialTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: FusionadosHistorialTable
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: fecha
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+          - AttributeName: fecha
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
